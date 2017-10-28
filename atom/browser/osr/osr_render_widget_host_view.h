@@ -226,8 +226,12 @@ class OffScreenRenderWidgetHostView
   void OnGuestViewFrameSwapped(
       content::RenderWidgetHostViewGuest* guest_host_view);
 
-  void OnPaint(const gfx::Rect& damage_rect, const SkBitmap& bitmap);
-  void OnPopupPaint(const gfx::Rect& damage_rect, const SkBitmap& bitmap);
+  void OnPaint(const gfx::Rect& damage_rect,
+               const SkBitmap& bitmap,
+               base::TimeTicks timestamp);
+  void OnPopupPaint(const gfx::Rect& damage_rect,
+                    const SkBitmap& bitmap,
+                    base::TimeTicks timestamp);
   void OnProxyViewPaint(const gfx::Rect& damage_rect);
 
   bool IsPopupWidget() const {

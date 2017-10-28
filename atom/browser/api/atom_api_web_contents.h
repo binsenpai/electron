@@ -187,7 +187,9 @@ class WebContents : public mate::TrackableObject<WebContents>,
 
   // Methods for offscreen rendering
   bool IsOffScreen() const;
-  void OnPaint(const gfx::Rect& dirty_rect, const SkBitmap& bitmap);
+  void OnPaint(const gfx::Rect& dirty_rect,
+               const SkBitmap& bitmap,
+               base::TimeTicks timestamp);
   void StartPainting();
   void StopPainting();
   bool IsPainting() const;
@@ -262,10 +264,10 @@ class WebContents : public mate::TrackableObject<WebContents>,
                               const base::string16& source_id) override;
   void WebContentsCreated(
       content::WebContents* source_contents,
-      int opener_render_process_id,
-      int opener_render_frame_id,
-      const std::string& frame_name,
-      const GURL& target_url,
+                          int opener_render_process_id,
+                          int opener_render_frame_id,
+                          const std::string& frame_name,
+                          const GURL& target_url,
       content::WebContents* new_contents)
       override;
   void AddNewContents(content::WebContents* source,

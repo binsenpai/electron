@@ -51,6 +51,7 @@ SkCanvas* OffScreenOutputDevice::BeginPaint(const gfx::Rect& damage_rect) {
   DCHECK(canvas_.get());
   DCHECK(bitmap_.get());
 
+  start_timestamp_ = base::TimeTicks::Now();
   damage_rect_ = damage_rect;
   SkIRect damage = SkIRect::MakeXYWH(
     damage_rect_.x(),
@@ -99,7 +100,7 @@ void OffScreenOutputDevice::OnPaint(const gfx::Rect& damage_rect) {
   if (rect.IsEmpty())
     return;
 
-  callback_.Run(rect, *bitmap_);
+  callback_.Run(rect, *bitmap_, start_timestamp_);
 }
 
 }  // namespace atom

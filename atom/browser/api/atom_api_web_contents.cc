@@ -518,11 +518,11 @@ void WebContents::OnCreateWindow(
 
 void WebContents::WebContentsCreated(
     content::WebContents* source_contents,
-    int opener_render_process_id,
-    int opener_render_frame_id,
-    const std::string& frame_name,
-    const GURL& target_url,
-    content::WebContents* new_contents) {
+                                     int opener_render_process_id,
+                                     int opener_render_frame_id,
+                                     const std::string& frame_name,
+                                     const GURL& target_url,
+                                     content::WebContents* new_contents) {
   v8::Locker locker(isolate());
   v8::HandleScope handle_scope(isolate());
   auto api_web_contents = CreateFrom(isolate(), new_contents, BROWSER_WINDOW);
@@ -1704,8 +1704,10 @@ bool WebContents::IsOffScreen() const {
 #endif
 }
 
-void WebContents::OnPaint(const gfx::Rect& dirty_rect, const SkBitmap& bitmap) {
-  Emit("paint", dirty_rect, gfx::Image::CreateFrom1xBitmap(bitmap));
+void WebContents::OnPaint(const gfx::Rect& dirty_rect,
+                          const SkBitmap& bitmap,
+                          base::TimeTicks timestamp) {
+  Emit("paint", dirty_rect, gfx::Image::CreateFrom1xBitmap(bitmap), std::to_string(timestamp.ToInternalValue()));
 }
 
 void WebContents::StartPainting() {

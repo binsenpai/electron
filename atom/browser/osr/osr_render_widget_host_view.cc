@@ -131,7 +131,8 @@ class AtomCopyFrameGenerator {
         cc::CopyOutputRequest::CreateBitmapRequest(base::Bind(
             &AtomCopyFrameGenerator::CopyFromCompositingSurfaceHasResult,
             weak_ptr_factory_.GetWeakPtr(),
-            damage_rect));
+            damage_rect,
+            base::TimeTicks::Now()));
 
     request->set_area(gfx::Rect(view_->GetPhysicalBackingSize()));
     view_->GetRootLayer()->RequestCopyOfOutput(std::move(request));
@@ -145,6 +146,7 @@ class AtomCopyFrameGenerator {
  private:
   void CopyFromCompositingSurfaceHasResult(
       const gfx::Rect& damage_rect,
+      const base::TimeTicks& start_time,
       std::unique_ptr<cc::CopyOutputResult> result) {
     if (result->IsEmpty() || result->size().IsEmpty() ||
         !view_->render_widget_host()) {
@@ -168,11 +170,12 @@ class AtomCopyFrameGenerator {
           base::Bind(&AtomCopyFrameGenerator::OnCopyFrameCaptureSuccess,
             weak_ptr_factory_.GetWeakPtr(),
             damage_rect,
-            bitmap),
+            bitmap,
+            start_time),
           next_frame_in);
       } else {
         next_frame_time_ = now + frame_duration_;
-        OnCopyFrameCaptureSuccess(damage_rect, bitmap);
+        OnCopyFrameCaptureSuccess(damage_rect, bitmap, start_time);
       }
 
       frame_retry_count_ = 0;
@@ -194,9 +197,10 @@ class AtomCopyFrameGenerator {
 
   void OnCopyFrameCaptureSuccess(
       const gfx::Rect& damage_rect,
-      const std::shared_ptr<SkBitmap>& bitmap) {
+      const std::shared_ptr<SkBitmap>& bitmap,
+      const base::TimeTicks& start_time) {
     base::AutoLock lock(onPaintLock_);
-    view_->OnPaint(damage_rect, *bitmap);
+    view_->OnPaint(damage_rect, *bitmap, start_time);
   }
 
   base::Lock lock_;
@@ -304,7 +308,7 @@ OffScreenRenderWidgetHostView::OffScreenRenderWidgetHostView(
       factory->GetContextFactoryPrivate();
   compositor_.reset(
       new ui::Compositor(context_factory_private->AllocateFrameSinkId(),
-        content::GetContextFactory(), context_factory_private,
+                         content::GetContextFactory(), context_factory_private,
         base::ThreadTaskRunnerHandle::Get(), false));
   compositor_->SetAcceleratedWidget(gfx::kNullAcceleratedWidget);
   compositor_->SetRootLayer(root_layer_.get());
@@ -966,14 +970,15 @@ void CopyBitmapTo(
   destination.notifyPixelsChanged();
 }
 
-void OffScreenRenderWidgetHostView::OnPaint(
-    const gfx::Rect& damage_rect, const SkBitmap& bitmap) {
+void OffScreenRenderWidgetHostView::OnPaint(const gfx::Rect& damage_rect,
+                                            const SkBitmap& bitmap,
+                                            base::TimeTicks timestamp) {
   TRACE_EVENT0("electron", "OffScreenRenderWidgetHostView::OnPaint");
 
   HoldResize();
 
   if (parent_callback_) {
-    parent_callback_.Run(damage_rect, bitmap);
+    parent_callback_.Run(damage_rect, bitmap, timestamp);
   } else {
     gfx::Rect damage(damage_rect);
 
@@ -1005,7 +1010,7 @@ void OffScreenRenderWidgetHostView::OnPaint(
 
     damage.Intersect(GetViewBounds());
     paint_callback_running_ = true;
-    callback_.Run(damage, bitmap);
+    callback_.Run(damage, bitmap, timestamp);
     paint_callback_running_ = false;
 
     for (size_t i = 0; i < damages.size(); i++) {
@@ -1016,8 +1021,9 @@ void OffScreenRenderWidgetHostView::OnPaint(
   ReleaseResize();
 }
 
-void OffScreenRenderWidgetHostView::OnPopupPaint(
-    const gfx::Rect& damage_rect, const SkBitmap& bitmap) {
+void OffScreenRenderWidgetHostView::OnPopupPaint(const gfx::Rect& damage_rect,
+                                                 const SkBitmap& bitmap,
+                                                 base::TimeTicks timestamp) {
   if (popup_host_view_ && popup_bitmap_.get())
     popup_bitmap_.reset(new SkBitmap(bitmap));
   InvalidateBounds(popup_host_view_->popup_position_);
