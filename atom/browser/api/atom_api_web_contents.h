@@ -18,6 +18,7 @@
 #include "content/public/browser/keyboard_event_processing_result.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
+#include "content/public/common/drop_data.h"
 #include "content/public/common/favicon_url.h"
 #include "native_mate/handle.h"
 #include "printing/backend/print_backend.h"
@@ -262,6 +263,13 @@ class WebContents : public mate::TrackableObject<WebContents>,
   void RemoveObserver(ExtendedWebContentsObserver* obs) {
     observers_.RemoveObserver(obs);
   }
+
+  bool start_dragging = false;
+  bool dragging = false;
+  content::DropData drop_data;
+  blink::WebDragOperationsMask drag_ops = blink::kWebDragOperationNone;
+  gfx::ImageSkia drag_image;
+  gfx::Vector2d drag_image_offset;
 
  protected:
   WebContents(v8::Isolate* isolate,
