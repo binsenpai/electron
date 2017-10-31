@@ -787,7 +787,7 @@ void WebContents::MediaStoppedPlaying(const MediaPlayerInfo& video_type,
 
 void WebContents::DidChangeThemeColor(SkColor theme_color) {
   if (theme_color != SK_ColorTRANSPARENT) {
-    Emit("did-change-theme-color", atom::ToRGBHex(theme_color));
+  Emit("did-change-theme-color", atom::ToRGBHex(theme_color));
   } else {
     Emit("did-change-theme-color", nullptr);
   }
@@ -1350,9 +1350,9 @@ void WebContents::Print(mate::Arguments* args) {
   if (args->Length() == 2) {
     base::Callback<void(bool)> callback;
     if (!args->GetNext(&callback)) {
-      args->ThrowError();
-      return;
-    }
+    args->ThrowError();
+    return;
+  }
     print_view_manager_basic_ptr->SetCallback(callback);
   }
   print_view_manager_basic_ptr->PrintNow(web_contents()->GetMainFrame(),
@@ -1517,6 +1517,39 @@ void WebContents::SendInputEvent(v8::Isolate* isolate,
     blink::WebMouseEvent mouse_event;
     if (mate::ConvertFromV8(isolate, input_event, &mouse_event)) {
       view->ProcessMouseEvent(mouse_event, ui::LatencyInfo());
+
+      auto host = view->GetRenderWidgetHost();
+      auto pt = gfx::Point(mouse_event.PositionInWidget().x, mouse_event.PositionInWidget().y);
+      if (type == blink::WebInputEvent::kMouseMove) {
+        if (!dragging && start_dragging) {
+          host->DragTargetDragEnter(drop_data, pt, pt, drag_ops, mouse_event.GetModifiers());
+          dragging = true;
+
+          auto bitmap = drag_image.bitmap();
+          if (bitmap) {
+            mate::Handle<NativeImage> image =
+              NativeImage::Create(isolate, gfx::Image::CreateFrom1xBitmap(*bitmap));
+            Emit("start-drag", image, gfx::Point(drag_image_offset.x(), drag_image_offset.y()));
+          } else {
+            Emit("start-drag");
+          }
+        }
+        if (dragging) {
+          host->DragTargetDragOver(pt, pt, drag_ops, mouse_event.GetModifiers());
+        }
+      }
+      else if (type == blink::WebInputEvent::kMouseUp && dragging) {
+        Emit("stop-drag");
+
+        host->DragTargetDrop(drop_data, pt, pt, mouse_event.GetModifiers());
+        host->DragSourceEndedAt(pt, pt, drag_ops);
+        host->DragSourceSystemDragEnded();
+
+        drop_data = {};
+        start_dragging = false;
+        dragging = false;
+        drag_ops = blink::kWebDragOperationNone;
+      }
       return;
     }
   } else if (blink::WebInputEvent::IsKeyboardEventType(type)) {
