@@ -94,6 +94,7 @@
 #include "net/url_request/url_request_context.h"
 #include "third_party/WebKit/public/platform/WebInputEvent.h"
 #include "third_party/WebKit/public/web/WebFindOptions.h"
+#include "ui/base/ime/ime_text_span.h"
 #include "ui/display/screen.h"
 #include "ui/events/base_event_utils.h"
 
@@ -119,7 +120,7 @@ struct PrintSettings {
 
 namespace mate {
 
-template <>
+template<>
 struct Converter<PrintSettings> {
   static bool FromV8(v8::Isolate* isolate,
                      v8::Local<v8::Value> val,
@@ -134,7 +135,7 @@ struct Converter<PrintSettings> {
   }
 };
 
-template <>
+template<>
 struct Converter<printing::PrinterBasicInfo> {
   static v8::Local<v8::Value> ToV8(v8::Isolate* isolate,
                                    const printing::PrinterBasicInfo& val) {
@@ -177,7 +178,7 @@ struct Converter<WindowOpenDisposition> {
   }
 };
 
-template <>
+template<>
 struct Converter<content::SavePageType> {
   static bool FromV8(v8::Isolate* isolate,
                      v8::Local<v8::Value> val,
@@ -199,7 +200,7 @@ struct Converter<content::SavePageType> {
   }
 };
 
-template <>
+template<>
 struct Converter<atom::api::WebContents::Type> {
   static v8::Local<v8::Value> ToV8(v8::Isolate* isolate,
                                    atom::api::WebContents::Type val) {
@@ -296,7 +297,7 @@ struct WebContents::FrameDispatchHelper {
 
   void OnSetTemporaryZoomLevel(double level, IPC::Message* reply_msg) {
     api_web_contents->OnSetTemporaryZoomLevel(rfh, level, reply_msg);
-  }
+    }
 
   void OnGetZoomLevel(IPC::Message* reply_msg) {
     api_web_contents->OnGetZoomLevel(rfh, reply_msg);
@@ -306,7 +307,7 @@ struct WebContents::FrameDispatchHelper {
                              const base::ListValue& args,
                              IPC::Message* message) {
     api_web_contents->OnRendererMessageSync(rfh, channel, args, message);
-  }
+}
 };
 
 WebContents::WebContents(v8::Isolate* isolate,
@@ -388,7 +389,7 @@ WebContents::WebContents(v8::Isolate* isolate,
       view->SetWebContents(web_contents);
     } else {
 #endif
-      web_contents = content::WebContents::Create(params);
+    web_contents = content::WebContents::Create(params);
 #if defined(ENABLE_OSR)
     }
   } else if (IsOffScreen()) {
@@ -422,7 +423,7 @@ void WebContents::InitZoomController(content::WebContents* web_contents,
 }
 
 void WebContents::InitWithSessionAndOptions(v8::Isolate* isolate,
-                                            content::WebContents* web_contents,
+                                            content::WebContents *web_contents,
                                             mate::Handle<api::Session> session,
                                             const mate::Dictionary& options) {
   Observe(web_contents);
@@ -551,8 +552,8 @@ void WebContents::AddNewContents(content::WebContents* source,
   v8::HandleScope handle_scope(isolate());
   auto api_web_contents = CreateFrom(isolate(), new_contents);
   if (Emit("-add-new-contents", api_web_contents, disposition, user_gesture,
-           initial_rect.x(), initial_rect.y(), initial_rect.width(),
-           initial_rect.height())) {
+      initial_rect.x(), initial_rect.y(), initial_rect.width(),
+      initial_rect.height())) {
     api_web_contents->DestroyWebContents(true /* async */);
   }
 }
@@ -719,8 +720,8 @@ void WebContents::FindReply(content::WebContents* web_contents,
 }
 
 bool WebContents::CheckMediaAccessPermission(content::WebContents* web_contents,
-                                             const GURL& security_origin,
-                                             content::MediaStreamType type) {
+    const GURL& security_origin,
+    content::MediaStreamType type) {
   return true;
 }
 
@@ -734,8 +735,8 @@ void WebContents::RequestMediaAccessPermission(
 }
 
 void WebContents::RequestToLockMouse(content::WebContents* web_contents,
-                                     bool user_gesture,
-                                     bool last_unlocked_by_target) {
+    bool user_gesture,
+    bool last_unlocked_by_target) {
   auto* permission_helper =
       WebContentsPermissionHelper::FromWebContents(web_contents);
   permission_helper->RequestPointerLockPermission(user_gesture);
@@ -854,7 +855,7 @@ void WebContents::DidStartNavigation(
     frame_host = render_manager->speculative_frame_host();
     if (!frame_host)
       frame_host = render_manager->current_frame_host();
-  }
+    }
   int frame_process_id = -1, frame_routing_id = -1;
   if (frame_host) {
     frame_process_id = frame_host->GetProcess()->GetID();
@@ -897,7 +898,7 @@ void WebContents::DidFinishNavigation(
            is_main_frame, frame_process_id, frame_routing_id);
       if (is_main_frame) {
         Emit("did-navigate", url, http_response_code, http_status_text);
-      }
+    }
     }
     if (IsGuest())
       Emit("load-commit", url, is_main_frame);
@@ -1007,7 +1008,7 @@ bool WebContents::OnMessageReceived(const IPC::Message& message) {
   bool handled = true;
   IPC_BEGIN_MESSAGE_MAP(WebContents, message)
     IPC_MESSAGE_HANDLER_CODE(ViewHostMsg_SetCursor, OnCursorChange,
-                             handled = false)
+      handled = false)
     IPC_MESSAGE_UNHANDLED(handled = false)
   IPC_END_MESSAGE_MAP()
 
@@ -1151,9 +1152,9 @@ void WebContents::LoadURL(const GURL& url, const mate::Dictionary& options) {
   content::NavigationController::LoadURLParams params(url);
 
   if (!options.Get("httpReferrer", &params.referrer)) {
-    GURL http_referrer;
-    if (options.Get("httpReferrer", &http_referrer))
-      params.referrer = content::Referrer(http_referrer.GetAsReferrer(),
+  GURL http_referrer;
+  if (options.Get("httpReferrer", &http_referrer))
+    params.referrer = content::Referrer(http_referrer.GetAsReferrer(),
                                           blink::kWebReferrerPolicyDefault);
   }
 
@@ -1201,7 +1202,7 @@ void WebContents::LoadURL(const GURL& url, const mate::Dictionary& options) {
 void WebContents::DownloadURL(const GURL& url) {
   auto* browser_context = web_contents()->GetBrowserContext();
   auto* download_manager =
-      content::BrowserContext::GetDownloadManager(browser_context);
+    content::BrowserContext::GetDownloadManager(browser_context);
   std::unique_ptr<download::DownloadUrlParameters> download_params(
       content::DownloadRequestUtils::CreateDownloadForWebContentsMainFrame(
           web_contents(), url, NO_TRAFFIC_ANNOTATION_YET));
@@ -1256,7 +1257,7 @@ void WebContents::SetWebRTCIPHandlingPolicy(
   if (GetWebRTCIPHandlingPolicy() == webrtc_ip_handling_policy)
     return;
   web_contents()->GetMutableRendererPrefs()->webrtc_ip_handling_policy =
-      webrtc_ip_handling_policy;
+    webrtc_ip_handling_policy;
 
   content::RenderViewHost* host = web_contents()->GetRenderViewHost();
   if (host)
@@ -1629,35 +1630,35 @@ void WebContents::SendInputEvent(v8::Isolate* isolate,
       auto host = view->GetRenderWidgetHost();
       auto pt = gfx::PointF(mouse_event.PositionInWidget().x, mouse_event.PositionInWidget().y);
       if (type == blink::WebInputEvent::kMouseMove) {
-        if (!dragging && start_dragging) {
+		  if (!dragging && start_dragging) {
           host->DragTargetDragEnter(drop_data, pt, pt, drag_ops, mouse_event.GetModifiers());
-          dragging = true;
+			  dragging = true;
 
-          auto bitmap = drag_image.bitmap();
-          if (bitmap) {
-            mate::Handle<NativeImage> image =
-              NativeImage::Create(isolate, gfx::Image::CreateFrom1xBitmap(*bitmap));
-            Emit("start-drag", image, gfx::Point(drag_image_offset.x(), drag_image_offset.y()));
+			  auto bitmap = drag_image.bitmap();
+			  if (bitmap) {
+				  mate::Handle<NativeImage> image =
+					  NativeImage::Create(isolate, gfx::Image::CreateFrom1xBitmap(*bitmap));
+				  Emit("start-drag", image, gfx::Point(drag_image_offset.x(), drag_image_offset.y()));
           } else {
-            Emit("start-drag");
-          }
+				  Emit("start-drag");
+		  }
         }
         if (dragging) {
           host->DragTargetDragOver(pt, pt, drag_ops, mouse_event.GetModifiers());
         }
       }
       else if (type == blink::WebInputEvent::kMouseUp && dragging) {
-        Emit("stop-drag");
+		  Emit("stop-drag");
 
         host->DragTargetDrop(drop_data, pt, pt, mouse_event.GetModifiers());
-        host->DragSourceEndedAt(pt, pt, drag_ops);
-        host->DragSourceSystemDragEnded();
+		  host->DragSourceEndedAt(pt, pt, drag_ops);
+		  host->DragSourceSystemDragEnded();
 
-        drop_data = {};
-        start_dragging = false;
-        dragging = false;
+		  drop_data = {};
+		  start_dragging = false;
+		  dragging = false;
         drag_ops = blink::kWebDragOperationNone;
-      }
+	  }
       return;
     }
   } else if (blink::WebInputEvent::IsKeyboardEventType(type)) {
@@ -1770,7 +1771,7 @@ void WebContents::CapturePage(mate::Arguments* args) {
   const gfx::NativeView native_view = view->GetNativeView();
   const float scale = display::Screen::GetScreen()
                           ->GetDisplayNearestView(native_view)
-                          .device_scale_factor();
+      .device_scale_factor();
   if (scale > 1.0f)
     bitmap_size = gfx::ScaleToCeiledSize(view_size, scale);
 
@@ -1784,10 +1785,10 @@ void WebContents::OnCursorChange(const content::WebCursor& cursor) {
 
   if (cursor.IsCustom()) {
     Emit("cursor-changed", CursorTypeToString(info),
-         gfx::Image::CreateFrom1xBitmap(info.custom_image),
-         info.image_scale_factor,
-         gfx::Size(info.custom_image.width(), info.custom_image.height()),
-         info.hotspot);
+      gfx::Image::CreateFrom1xBitmap(info.custom_image),
+      info.image_scale_factor,
+      gfx::Size(info.custom_image.width(), info.custom_image.height()),
+      info.hotspot);
   } else {
     Emit("cursor-changed", CursorTypeToString(info));
   }
@@ -1895,6 +1896,111 @@ gfx::Size WebContents::GetSizeForNewRenderView(content::WebContents* wc) const {
   }
 
   return gfx::Size();
+}
+
+void WebContents::SendImeEvent(const mate::Dictionary& event) {
+  if (!IsOffScreen()) {
+    return;
+  }
+
+  auto* view = static_cast<OffScreenRenderWidgetHostView*>(
+      web_contents()->GetRenderWidgetHostView());
+  if (!view) {
+    return;
+  }
+
+  auto* host =
+      static_cast<content::RenderWidgetHostImpl*>(view->GetRenderWidgetHost());
+  if (!host) {
+    return;
+  }
+
+  std::string type{};
+  if (!event.Get("type", &type)) {
+    return;
+  }
+
+  if (type == "commit") {
+    base::string16 text{};
+    if (event.Get("text", &text)) {
+      gfx::Range range(UINT32_MAX, UINT32_MAX);
+      host->ImeCommitText(text, {}, range, 0);
+      view->RequestCompositionUpdates(false);
+    }
+  } else if (type == "set") {
+    base::string16 text{};
+    if (!event.Get("text", &text)) {
+      return;
+    }
+
+    ui::ImeTextSpans under{};
+    std::vector<mate::Dictionary> underlines;
+    event.Get("underlines", &underlines);
+    for (const auto& u : underlines) {
+      ui::ImeTextSpan temp{};
+      temp.type = ui::ImeTextSpan::Type::kComposition;
+      u.Get("from", &temp.start_offset);
+      u.Get("to", &temp.end_offset);
+      int thick{0};
+      u.Get("thick", &thick);
+      temp.thick = (thick != 0);
+      u.Get("color", &temp.underline_color);
+      u.Get("backgroundColor", &temp.background_color);
+      under.emplace_back(std::move(temp));
+    }
+
+    gfx::Range replacementRange(UINT32_MAX, UINT32_MAX);
+
+    int selectionRangeFrom{0};
+    event.Get("from", &selectionRangeFrom);
+
+  	int selectionRangeTo{0};
+    event.Get("to", &selectionRangeTo);
+
+    view->RequestCompositionUpdates(true);
+    host->ImeSetComposition(text,
+                            under,
+                            replacementRange,
+                            selectionRangeFrom,
+                            selectionRangeTo);
+  } else if (type == "cancel") {
+    view->ImeCancelComposition();
+  }
+}
+
+void WebContents::OnImeCompositionRangeChanged(const gfx::Range& range,
+                                               const std::vector<gfx::Rect>& character_bounds) {
+  v8::Locker locker(isolate());
+  v8::HandleScope handle_scope(isolate());
+  std::vector<mate::Dictionary> bounds{};
+  bounds.reserve(character_bounds.size());
+  for (const auto& b : character_bounds) {
+    mate::Dictionary bound = mate::Dictionary::CreateEmpty(isolate());
+    bound.Set("x", b.x());
+    bound.Set("y", b.y());
+    bound.Set("width", b.width());
+    bound.Set("height", b.height());
+    bounds.emplace_back(std::move(bound));
+  }
+  Emit("ime-composition-range-changed", range.start(), range.end(), bounds);
+}
+
+void WebContents::OnSelectionBoundsChanged(const gfx::Rect& anchor_rect,
+                                           const gfx::Rect& focus_rect,
+                                           bool is_anchor_first) {
+  v8::Locker locker(isolate());
+  v8::HandleScope handle_scope(isolate());
+  mate::Dictionary anchor_rect_dict = mate::Dictionary::CreateEmpty(isolate());
+  anchor_rect_dict.Set("x", anchor_rect.x());
+  anchor_rect_dict.Set("y", anchor_rect.y());
+  anchor_rect_dict.Set("width", anchor_rect.width());
+  anchor_rect_dict.Set("height", anchor_rect.height());
+  mate::Dictionary focus_rect_dict = mate::Dictionary::CreateEmpty(isolate());
+  focus_rect_dict.Set("x", focus_rect.x());
+  focus_rect_dict.Set("y", focus_rect.y());
+  focus_rect_dict.Set("width", focus_rect.width());
+  focus_rect_dict.Set("height", focus_rect.height());
+  Emit("selection-bounds-changed", anchor_rect_dict, focus_rect_dict, is_anchor_first);
 }
 
 void WebContents::SetZoomLevel(double level) {
@@ -2099,6 +2205,7 @@ void WebContents::BuildPrototype(v8::Isolate* isolate,
       .SetMethod("setFrameRate", &WebContents::SetFrameRate)
       .SetMethod("getFrameRate", &WebContents::GetFrameRate)
       .SetMethod("invalidate", &WebContents::Invalidate)
+      .SetMethod("sendImeEvent", &WebContents::SendImeEvent)
       .SetMethod("setZoomLevel", &WebContents::SetZoomLevel)
       .SetMethod("_getZoomLevel", &WebContents::GetZoomLevel)
       .SetMethod("setZoomFactor", &WebContents::SetZoomFactor)
