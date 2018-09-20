@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "atom/browser/api/atom_api_web_contents.h"
 #include "base/callback_helpers.h"
 #include "base/location.h"
 #include "base/memory/ptr_util.h"
@@ -22,6 +23,8 @@
 #include "content/browser/renderer_host/compositor_resize_lock.h"
 #include "content/browser/renderer_host/render_widget_host_delegate.h"
 #include "content/browser/renderer_host/render_widget_host_impl.h"
+#include "content/browser/web_contents/web_contents_impl.h"
+#include "content/common/input_messages.h"
 #include "content/common/view_messages.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/context_factory.h"
@@ -117,7 +120,7 @@ class AtomCopyFrameGenerator {
  public:
   AtomCopyFrameGenerator(OffScreenRenderWidgetHostView* view,
                          int frame_rate_threshold_us)
-      : view_(view),
+    : view_(view),
         frame_duration_(
             base::TimeDelta::FromMicroseconds(frame_rate_threshold_us)),
         weak_ptr_factory_(this) {
@@ -189,7 +192,7 @@ class AtomCopyFrameGenerator {
           base::BindOnce(&AtomCopyFrameGenerator::GenerateCopyFrame,
                          weak_ptr_factory_.GetWeakPtr(), damage_rect));
     }
-  }
+    }
 
   void OnCopyFrameCaptureSuccess(const gfx::Rect& damage_rect,
                                  const std::shared_ptr<SkBitmap>& bitmap) {
@@ -379,7 +382,7 @@ void OffScreenRenderWidgetHostView::InitAsChild(gfx::NativeView) {
 
   if (parent_host_view_->child_host_view_) {
     parent_host_view_->child_host_view_->CancelWidget();
-  }
+}
 
   parent_host_view_->set_child_host_view(this);
   parent_host_view_->Hide();
@@ -596,10 +599,18 @@ void OffScreenRenderWidgetHostView::SetIsLoading(bool loading) {}
 void OffScreenRenderWidgetHostView::TextInputStateChanged(
     const content::TextInputState& params) {}
 
-void OffScreenRenderWidgetHostView::ImeCancelComposition() {}
+void OffScreenRenderWidgetHostView::ImeCancelComposition() {
+  auto* host = static_cast<content::RenderWidgetHostImpl*>(GetRenderWidgetHost());
+  if (!host) {
+    return;
+  }
+
+  host->ImeCancelComposition();
+  RequestCompositionUpdates(false);
+}
 
 void OffScreenRenderWidgetHostView::RenderProcessGone(base::TerminationStatus,
-                                                      int) {
+    int) {
   Destroy();
 }
 
@@ -635,7 +646,24 @@ void OffScreenRenderWidgetHostView::Destroy() {
 void OffScreenRenderWidgetHostView::SetTooltipText(const base::string16&) {}
 
 void OffScreenRenderWidgetHostView::SelectionBoundsChanged(
-    const ViewHostMsg_SelectionBounds_Params&) {}
+    const ViewHostMsg_SelectionBounds_Params& params) {
+  auto* host = static_cast<content::RenderWidgetHostImpl*>(GetRenderWidgetHost());
+  if (!host) {
+    return;
+  }
+
+  auto web_contents = static_cast<content::WebContentsImpl*>(host->delegate());
+  if (!web_contents) {
+    return;
+  }
+
+  auto atom_web_contents = static_cast<atom::api::WebContents*>(web_contents->GetDelegate());
+  if (!atom_web_contents) {
+    return;
+  }
+
+  atom_web_contents->OnSelectionBoundsChanged(params.anchor_rect, params.focus_rect, params.is_anchor_first);
+}
 
 void OffScreenRenderWidgetHostView::CopyFromSurface(
     const gfx::Rect& src_rect,
@@ -684,8 +712,25 @@ viz::SurfaceId OffScreenRenderWidgetHostView::GetCurrentSurfaceId() const {
 }
 
 void OffScreenRenderWidgetHostView::ImeCompositionRangeChanged(
-    const gfx::Range&,
-    const std::vector<gfx::Rect>&) {}
+    const gfx::Range& range,
+    const std::vector<gfx::Rect>& character_bounds) {
+  auto* host = static_cast<content::RenderWidgetHostImpl*>(GetRenderWidgetHost());
+  if (!host) {
+    return;
+  }
+
+  auto web_contents = static_cast<content::WebContentsImpl*>(host->delegate());
+  if (!web_contents) {
+    return;
+  }
+
+  auto atom_web_contents = static_cast<atom::api::WebContents*>(web_contents->GetDelegate());
+  if (!atom_web_contents) {
+    return;
+  }
+
+  atom_web_contents->OnImeCompositionRangeChanged(range, character_bounds);
+}
 
 gfx::Size OffScreenRenderWidgetHostView::GetCompositorViewportPixelSize()
     const {
@@ -704,17 +749,28 @@ OffScreenRenderWidgetHostView::CreateViewForWidget(
   if (render_widget_host->GetView()) {
     return static_cast<content::RenderWidgetHostViewBase*>(
         render_widget_host->GetView());
-  }
+}
 
   OffScreenRenderWidgetHostView* embedder_host_view = nullptr;
   if (embedder_render_widget_host) {
     embedder_host_view = static_cast<OffScreenRenderWidgetHostView*>(
         embedder_render_widget_host->GetView());
-  }
+}
 
   return new OffScreenRenderWidgetHostView(
       transparent_, true, embedder_host_view->GetFrameRate(), callback_,
       render_widget_host, embedder_host_view, native_window_);
+}
+
+void OffScreenRenderWidgetHostView::RequestCompositionUpdates(bool enable) {
+  auto* host = static_cast<content::RenderWidgetHostImpl*>(GetRenderWidgetHost());
+  if (!host) {
+    return;
+  }
+
+  host->Send(new InputMsg_RequestCompositionUpdates(host->GetRoutingID(),
+                                                    false,
+                                                    enable));
 }
 
 #if !defined(OS_MACOSX)
@@ -802,8 +858,8 @@ bool OffScreenRenderWidgetHostView::TransformPointToLocalCoordSpace(
   gfx::PointF point_in_pixels = gfx::ConvertPointToPixel(scale_factor_, point);
   if (!GetDelegatedFrameHost()->TransformPointToLocalCoordSpace(
           point_in_pixels, original_surface, transformed_point)) {
-    return false;
-  }
+  return false;
+}
 
   *transformed_point =
       gfx::ConvertPointToDIP(scale_factor_, *transformed_point);
@@ -893,7 +949,7 @@ void OffScreenRenderWidgetHostView::OnGuestViewFrameSwapped(
 }
 
 std::unique_ptr<viz::SoftwareOutputDevice>
-OffScreenRenderWidgetHostView::CreateSoftwareOutputDevice(
+  OffScreenRenderWidgetHostView::CreateSoftwareOutputDevice(
     ui::Compositor* compositor) {
   DCHECK_EQ(GetCompositor(), compositor);
   DCHECK(!copy_frame_generator_);
@@ -903,7 +959,7 @@ OffScreenRenderWidgetHostView::CreateSoftwareOutputDevice(
 
   software_output_device_ = new OffScreenOutputDevice(
       transparent_, base::Bind(&OffScreenRenderWidgetHostView::OnPaint,
-                               weak_ptr_factory_.GetWeakPtr()));
+                 weak_ptr_factory_.GetWeakPtr()));
   return base::WrapUnique(software_output_device_);
 }
 
@@ -957,8 +1013,8 @@ void CopyBitmapTo(const SkBitmap& destination,
     for (int i = 0; i < height; i++) {
       memcpy(dest + ((pos.y() + i) * destination.width() + pos.x()) * pixelsize,
              src + (i * source.width()) * pixelsize, width * pixelsize);
-    }
   }
+}
 
   destination.notifyPixelsChanged();
 }
@@ -1194,12 +1250,12 @@ void OffScreenRenderWidgetHostView::SetFrameRate(int frame_rate) {
 
     frame_rate_ = parent_host_view_->GetFrameRate();
   } else {
-    if (frame_rate <= 0)
-      frame_rate = 1;
+  if (frame_rate <= 0)
+    frame_rate = 1;
     if (frame_rate > 240)
       frame_rate = 240;
 
-    frame_rate_ = frame_rate;
+  frame_rate_ = frame_rate;
   }
 
   SetupFrameRate(true);

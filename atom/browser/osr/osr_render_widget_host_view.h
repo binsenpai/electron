@@ -87,8 +87,8 @@ class OffScreenRenderWidgetHostView
 
   // content::RenderWidgetHostView:
   void InitAsChild(gfx::NativeView) override;
-  void SetSize(const gfx::Size&) override;
-  void SetBounds(const gfx::Rect&) override;
+  void SetSize(const gfx::Size &) override;
+  void SetBounds(const gfx::Rect &) override;
   gfx::Vector2dF GetLastScrollOffset(void) const override;
   gfx::NativeView GetNativeView(void) const override;
   gfx::NativeViewAccessible GetNativeViewAccessible(void) override;
@@ -121,7 +121,7 @@ class OffScreenRenderWidgetHostView
   // content::RenderWidgetHostViewBase:
   void DidCreateNewRendererCompositorFrameSink(
       viz::mojom::CompositorFrameSinkClient* renderer_compositor_frame_sink)
-      override;
+    override;
   void SubmitCompositorFrame(
       const viz::LocalSurfaceId& local_surface_id,
       viz::CompositorFrame frame,
@@ -130,14 +130,14 @@ class OffScreenRenderWidgetHostView
   void ClearCompositorFrame(void) override;
   void InitAsPopup(content::RenderWidgetHostView* rwhv,
                    const gfx::Rect& rect) override;
-  void InitAsFullscreen(content::RenderWidgetHostView*) override;
-  void UpdateCursor(const content::WebCursor&) override;
+  void InitAsFullscreen(content::RenderWidgetHostView *) override;
+  void UpdateCursor(const content::WebCursor &) override;
   void SetIsLoading(bool is_loading) override;
   void TextInputStateChanged(const content::TextInputState& params) override;
   void ImeCancelComposition(void) override;
   void RenderProcessGone(base::TerminationStatus, int) override;
   void Destroy(void) override;
-  void SetTooltipText(const base::string16&) override;
+  void SetTooltipText(const base::string16 &) override;
   void SelectionBoundsChanged(
       const ViewHostMsg_SelectionBounds_Params&) override;
   void CopyFromSurface(
@@ -161,10 +161,12 @@ class OffScreenRenderWidgetHostView
       content::RenderWidgetHost*,
       content::WebContentsView*) override;
 
+  void RequestCompositionUpdates(bool enable);
+
 #if !defined(OS_MACOSX)
   // content::DelegatedFrameHostClient:
   int DelegatedFrameHostGetGpuMemoryBufferClientId(void) const;
-  ui::Layer* DelegatedFrameHostGetLayer(void) const override;
+  ui::Layer *DelegatedFrameHostGetLayer(void) const override;
   bool DelegatedFrameHostIsVisible(void) const override;
   SkColor DelegatedFrameHostGetGutterColor() const override;
   bool DelegatedFrameCanCreateResizeLock() const override;
