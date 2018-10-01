@@ -93,7 +93,8 @@ def main():
   os.makedirs(DIST_DIR)
 
   force_build()
-  create_symbols()
+  if PLATFORM != 'darwin':
+    create_symbols()
   copy_binaries()
   copy_chrome_binary('chromedriver')
   copy_chrome_binary('mksnapshot')
@@ -114,7 +115,8 @@ def main():
   create_chrome_binary_zip('chromedriver', ELECTRON_VERSION)
   create_chrome_binary_zip('mksnapshot', ELECTRON_VERSION)
   create_ffmpeg_zip()
-  create_symbols_zip()
+  if PLATFORM != 'darwin':
+    create_symbols_zip()
 
 
 def force_build():
