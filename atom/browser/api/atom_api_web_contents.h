@@ -25,6 +25,7 @@
 #include "native_mate/handle.h"
 #include "printing/backend/print_backend.h"
 #include "ui/gfx/image/image.h"
+#include "ui/gfx/range/range.h"
 
 namespace blink {
 struct WebDeviceEmulationParams;
@@ -235,6 +236,14 @@ class WebContents : public mate::TrackableObject<WebContents>,
 #endif
   void Invalidate();
   gfx::Size GetSizeForNewRenderView(content::WebContents*) const override;
+
+  // Methods for offscreen IME
+  void SendImeEvent(const mate::Dictionary& event);
+  void OnImeCompositionRangeChanged(const gfx::Range& range,
+                                    const std::vector<gfx::Rect>& character_bounds);
+  void OnSelectionBoundsChanged(const gfx::Rect& anchor_rect,
+                                const gfx::Rect& focus_rect,
+                                bool is_anchor_first);
 
   // Methods for zoom handling.
   void SetZoomLevel(double level);
